@@ -1,14 +1,36 @@
-let books = {
-      1: {"author": "Chinua Achebe","title": "Things Fall Apart", "reviews": {} },
-      2: {"author": "Hans Christian Andersen","title": "Fairy tales", "reviews": {} },
-      3: {"author": "Dante Alighieri","title": "The Divine Comedy", "reviews": {} },
-      4: {"author": "Unknown","title": "The Epic Of Gilgamesh", "reviews": {} },
-      5: {"author": "Unknown","title": "The Book Of Job", "reviews": {} },
-      6: {"author": "Unknown","title": "One Thousand and One Nights", "reviews": {} },
-      7: {"author": "Unknown","title": "Nj\u00e1l's Saga", "reviews": {} },
-      8: {"author": "Jane Austen","title": "Pride and Prejudice", "reviews": {} },
-      9: {"author": "Honor\u00e9 de Balzac","title": "Le P\u00e8re Goriot", "reviews": {} },
-      10: {"author": "Samuel Beckett","title": "Molloy, Malone Dies, The Unnamable, the trilogy", "reviews": {} }
-}
-
-module.exports=books;
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const session = require('express-session')
+const customer_routes = require('./router/auth_users.js').authenticated;
+const genl_routes = require('./router/general.js').general;
+ 
+const app = express();
+ 
+app.use(express.json());
+ 
+app.use("/customer",session({secret:"fingerprint_customer",resave: true, saveUninitialized: true}))
+ 
+// Task 7 support: only logged-in users can reach /customer/auth/* routes
+app.use("/customer/auth/*", function auth(req,res,next){
+    if (req.session.authorization) {
+        const token = req.session.authorization['accessToken'];
+        jwt.verify(token, "access", (err, user) => {
+            if (!err) {
+                req.user = user;
+                next();
+            } else {
+                return res.status(403).json({ message: "User not authenticated" });
+            }
+        });
+    } else {
+        return res.status(403).json({ message: "User not logged in" });
+    }
+});
+ 
+const PORT =5000;
+ 
+app.use("/customer", customer_routes);
+app.use("/", genl_routes);
+ 
+app.listen(PORT,()=>console.log("Server is running"));
+ 
